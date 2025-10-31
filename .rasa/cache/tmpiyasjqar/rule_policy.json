@@ -1,0 +1,22 @@
+{
+  "lookup": {
+    "rules": {
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"list_mitigations\"}}]": "action_list_mitigations",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"list_mitigations\"}}, {\"prev_action\": {\"action_name\": \"action_list_mitigations\"}, \"user\": {\"intent\": \"list_mitigations\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"mitigation_id\"}}]": "action_lookup_mitigation",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"mitigation_id\"}}, {\"prev_action\": {\"action_name\": \"action_lookup_mitigation\"}, \"user\": {\"intent\": \"mitigation_id\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"ask_mitigation\"}}]": "action_lookup_mitigation",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"ask_mitigation\"}}, {\"prev_action\": {\"action_name\": \"action_lookup_mitigation\"}, \"user\": {\"intent\": \"ask_mitigation\"}}]": "action_listen"
+    },
+    "rule_only_slots": [],
+    "rule_only_loops": [],
+    "rules_for_loop_unhappy_path": {},
+    "rules_not_in_stories": [
+      "predicting default action with intent back",
+      "predicting default action with intent session_start",
+      "predicting default action with intent restart",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"mitigation_id\"}}, {\"prev_action\": {\"action_name\": \"action_lookup_mitigation\"}, \"user\": {\"intent\": \"mitigation_id\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"mitigation_id\"}}]"
+    ]
+  }
+}
