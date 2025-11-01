@@ -1,0 +1,53 @@
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - threat_detection
+  - mitigation
+  - device_status
+  - best_practices
+  - explain_model
+  - ask_mitigation
+  - list_mitigations
+  - mitigation_id
+
+slots:
+  fallback_count:
+    type: float
+    initial_value: 0
+    influence_conversation: true
+    mappings:
+      - type: custom
+      
+responses:
+  utter_greet:
+    - text: "Hello! I am your Smart Factory Cybersecurity Assistant. How can I help?"
+
+  utter_goodbye:
+    - text: "Stay safe! Remember to keep your IoT devices secure."
+
+  utter_threat_detection:
+    - text: "I can run anomaly detection using ML models on IoT traffic. Please specify the device or log file."
+
+  utter_mitigation:
+    - text: "Mitigation steps include isolating compromised devices, applying firmware patches, and deploying RL-based automated defenses."
+
+  utter_device_status:
+    - text: "IoT device monitoring shows normal traffic. No anomalies detected. Would you like a detailed analysis?"
+
+  utter_best_practices:
+    - text: "Follow zero-trust security, use strong authentication, enable encryption, and update device firmware regularly."
+
+  utter_explain_model:
+    - text: "This assistant combines RASA for conversational AI, ML/DNN for anomaly detection, GANs for adversarial training, and RL for automated mitigation strategies."
+  utter_default:
+    - text: "I'll need to think about this more carefully."
+    - text: "Let me get more specific information about that."
+    - text: "Could you rephrase that question?"
+actions:
+  - action_lookup_mitigation
+  - action_list_mitigations
+  - action_run_anomaly_detection
+  - action_analyze_pcap
+  - action_llm_fallback

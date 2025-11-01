@@ -1,0 +1,92 @@
+version: "3.1"
+nlu:
+- intent: greet
+  examples: |
+    - hi
+    - hello
+    - hey
+
+- intent: goodbye
+  examples: |
+    - bye
+    - goodbye
+    - see you later
+
+- intent: threat_detection
+  examples: |
+    - check if my IoT device is under attack
+    - detect threats in the factory network
+    - is there any anomaly in the system?
+    - run cyber threat detection
+    - run anomaly detection on device sensor-01
+    - analyze traffic from PLC-3
+    - run anomaly detection on logs at C:\data\iot\lineA_logs.csv
+    - check anomalies in file /var/log/iot/netflow.json
+    - analyze pcap file C:/Users/shrij/OneDrive/Desktop/Capstone Phase 3/model/tcp.pcap
+    - check C:/Users/shrij/OneDrive/Desktop/Capstone Phase 3/model/http.pcap for attacks
+    - scan /path/to/traffic.pcap
+    - detect attacks in tcp.pcap
+    - analyze network traffic from C:/traffic/capture.pcap
+    - check if there's a DDoS attack in my pcap file
+    - run analysis on C:/Users/shrij/OneDrive/Desktop/Capstone Phase 3/model/icmp.pcap
+
+- intent: mitigation
+  examples: |
+    - how do I stop a malware attack?
+    - what should I do if a device is compromised?
+    - mitigation strategy for ransomware
+    - help me isolate infected devices
+
+- intent: device_status
+  examples: |
+    - check sensor status
+    - is everything running normally?
+    - device health report
+    - any suspicious activity?
+
+- intent: best_practices
+  examples: |
+    - how can I secure IoT devices?
+    - give me best practices for factory cybersecurity
+    - how do I prevent cyber attacks?
+
+- intent: explain_model
+  examples: |
+    - how does this system work?
+    - explain the methodology
+    - what AI models are being used?
+
+- intent: ask_mitigation
+  examples: |
+    - tell me about vulnerability scanning
+    - what is mitigation M1016?
+    - how do I stop privilege escalation?
+    - explain M1030
+    - what mitigation helps with ransomware?
+    - how to prevent lateral movement?
+    - tell me about network segmentation
+    - what is M1047?
+    - how do I mitigate credential access?
+    - explain M1016 vulnerability scanning
+
+- intent: list_mitigations
+  examples: |
+    - show me available mitigations
+    - list all mitigations
+    - what mitigations are there
+    - show mitigations list
+    - display all mitigations
+    - show me the mitigation catalog
+
+- intent: mitigation_id
+  examples: |
+    - T1174
+    - T1151
+    - T1148
+    - T1081
+    - T1212
+    - t1174
+    - t1488
+    - T1012
+    - T1162
+    - T1166

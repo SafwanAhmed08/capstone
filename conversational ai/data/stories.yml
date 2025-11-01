@@ -1,0 +1,48 @@
+version: "3.1"
+stories:
+- story: detect threat
+  steps:
+  - intent: threat_detection
+  - action: action_run_anomaly_detection
+
+- story: analyze pcap file for attacks
+  steps:
+  - intent: threat_detection
+  - action: action_analyze_pcap
+
+- story: pcap analysis then mitigation lookup
+  steps:
+  - intent: threat_detection
+  - action: action_analyze_pcap
+  - intent: ask_mitigation
+  - action: action_lookup_mitigation
+
+- story: suggest mitigation
+  steps:
+  - intent: mitigation
+  - action: utter_mitigation
+
+- story: check device status
+  steps:
+  - intent: device_status
+  - action: utter_device_status
+
+- story: give best practices
+  steps:
+  - intent: best_practices
+  - action: utter_best_practices
+
+- story: explain system
+  steps:
+  - intent: explain_model
+  - action: utter_explain_model
+
+- story: lookup specific mitigation
+  steps:
+  - intent: ask_mitigation
+  - action: action_lookup_mitigation
+
+- story: list available mitigations
+  steps:
+  - intent: list_mitigations
+  - action: action_list_mitigations
