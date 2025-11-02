@@ -56,6 +56,19 @@ class ActionMitigationLookup(Action):
         print(f"🔍 Searching for query: '{query}'")
         print(f"🔍 DataFrame shape: {df.shape}")
 
+        # If the user asked a definitional / general knowledge question (e.g. "what is TCP"),
+        # delegate to the LLM fallback so the LLM can provide a concise explanation instead
+        # of trying to match MITRE mitigations.
+        if re.search(r"\b(what is|what's|define|explain|tell me about|who is|what are)\b", query, re.IGNORECASE):
+            print("ℹ️ Detected definitional/general question — delegating to LLM fallback")
+            try:
+                # Reuse the LLM fallback action to answer open-domain questions
+                ActionLLMFallback().run(dispatcher, tracker, domain)
+            except Exception as e:
+                logger.error(f"Error delegating to LLM fallback: {e}")
+                dispatcher.utter_message(text="I couldn't find a mitigation, and I had trouble contacting the LLM. Please try rephrasing your question.")
+            return []
+
         # Hardcoded overrides for specific topics/keywords
         normalized_query = query.strip().lower()
         overrides = {
