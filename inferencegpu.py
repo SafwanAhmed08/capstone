@@ -542,7 +542,5 @@ def main():
         print("✅ Detection matches expected attack type!")
     else:
         print("⚠️  Detection differs from expected attack type.")
-
-
 if __name__ == "__main__":
     main()

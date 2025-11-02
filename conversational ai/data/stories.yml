@@ -8,12 +8,12 @@ stories:
 - story: analyze pcap file for attacks
   steps:
   - intent: threat_detection
-  - action: action_analyze_pcap
+  - action: action_run_anomaly_detection
 
 - story: pcap analysis then mitigation lookup
   steps:
   - intent: threat_detection
-  - action: action_analyze_pcap
+  - action: action_run_anomaly_detection
   - intent: ask_mitigation
   - action: action_lookup_mitigation
 

@@ -2,7 +2,8 @@ const chatMessages = document.getElementById('chat-messages');
 const userInput = document.getElementById('user-input');
 const sendButton = document.getElementById('send-button');
 
-const RASA_SERVER = 'http://localhost:5005';
+// Rasa server URL — update port to match the server you started (5006)
+const RASA_SERVER = 'http://localhost:5006';
 
 async function sendToRasa(message) {
     try {
