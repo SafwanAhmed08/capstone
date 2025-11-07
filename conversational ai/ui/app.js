@@ -9,7 +9,41 @@ const RASA_SERVER = 'http://localhost:5006';
 const SENDER_ID = 'user';
 // Tracker polling interval (ms)
 const TRACKER_POLL_INTERVAL = 2000;
+// Feature flags for troubleshooting
+const ENABLE_TRACKER_POLL = true; // enabled to surface external notifications injected into the tracker
+const DEBUG_DUPES = true; // logs sources of messages
+// When the UI itself sends a message via REST, suppress showing tracker events for a short window
+let suppressTrackerUntil = 0;
 let lastTrackerEventCount = 0;
+
+// Dedupe recent bot messages so the same text isn't rendered twice when
+// it comes via immediate REST webhook response and then via tracker polling.
+// Map of message text -> last seen timestamp (ms)
+const displayedMessages = new Map();
+const DEDUPE_TTL_MS = 5000; // consider duplicates within 5 seconds as same
+
+function shouldDisplayBotText(text) {
+    if (!text) return false;
+    // Normalize to avoid duplicates that differ only in spacing/case
+    const key = text.trim().replace(/\s+/g, ' ').toLowerCase();
+    const now = Date.now();
+    const last = displayedMessages.get(key);
+    if (last && (now - last) < DEDUPE_TTL_MS) {
+        // Recently shown; skip duplicate
+        return false;
+    }
+    displayedMessages.set(key, now);
+    // Simple pruning to avoid unbounded growth
+    if (displayedMessages.size > 1000) {
+        // Remove oldest ~25% entries
+        const entries = Array.from(displayedMessages.entries()).sort((a, b) => a[1] - b[1]);
+        const toRemove = Math.ceil(entries.length * 0.25);
+        for (let i = 0; i < toRemove; i++) {
+            displayedMessages.delete(entries[i][0]);
+        }
+    }
+    return true;
+}
 async function sendToRasa(message) {
     try {
         const response = await fetch(`${RASA_SERVER}/webhooks/rest/webhook`, {
@@ -32,13 +66,24 @@ async function sendToRasa(message) {
     }
 }
 
-function addMessage(message, isUser) {
+function addMessage(message, isUser, source = 'UNKNOWN') {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
     
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     messageContent.textContent = message;
+
+    if (!isUser && DEBUG_DUPES) {
+        const metaSpan = document.createElement('span');
+        metaSpan.style.display = 'block';
+        metaSpan.style.fontSize = '0.6rem';
+        metaSpan.style.opacity = '0.5';
+        metaSpan.textContent = `[${source}]`;
+        messageDiv.appendChild(metaSpan);
+        // Also log to console
+        console.log(`Bot message (${source}):`, message);
+    }
     
     messageDiv.appendChild(messageContent);
     chatMessages.appendChild(messageDiv);
@@ -51,18 +96,28 @@ async function handleUserInput() {
     if (message) {
         addMessage(message, true);
         userInput.value = '';
+        // Prevent double send while awaiting response
+        sendButton.disabled = true;
+        userInput.disabled = true;
+        // Set suppression window so tracker-poll doesn't mirror REST responses
+        suppressTrackerUntil = Date.now() + 3000; // 3s suppression window
         
         // Get responses from RASA
         const botResponses = await sendToRasa(message);
         
         // Handle multiple responses
         for (const response of botResponses) {
-            if (response.text) {
-                addMessage(response.text, false);
+            if (response.text && shouldDisplayBotText(response.text)) {
+                addMessage(response.text, false, 'REST');
             }
             // Add a small delay between messages for better readability
             await new Promise(resolve => setTimeout(resolve, 500));
         }
+
+        // Re-enable input
+        sendButton.disabled = false;
+        userInput.disabled = false;
+        userInput.focus();
     }
 }
 
@@ -93,7 +148,13 @@ async function pollTracker() {
         const newEvents = events.slice(lastTrackerEventCount);
         newEvents.forEach(ev => {
             if (ev.event === 'bot' && ev.text) {
-                addMessage(ev.text, false);
+                // Skip showing tracker echoes right after a UI-originated REST send
+                if (Date.now() <= suppressTrackerUntil) {
+                    return;
+                }
+                if (shouldDisplayBotText(ev.text)) {
+                    addMessage(ev.text, false, 'TRACKER');
+                }
             }
         });
 
@@ -104,6 +165,8 @@ async function pollTracker() {
 }
 
 // Start polling the tracker periodically so UI receives messages posted to Rasa by external tools
-setInterval(pollTracker, TRACKER_POLL_INTERVAL);
-// Run once on load to initialize
-pollTracker();
+if (ENABLE_TRACKER_POLL) {
+    setInterval(pollTracker, TRACKER_POLL_INTERVAL);
+    // Run once on load to initialize
+    pollTracker();
+}

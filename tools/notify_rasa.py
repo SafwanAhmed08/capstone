@@ -37,13 +37,16 @@ def rasa_base_from_webhook(webhook_url: str) -> str:
     return webhook_url
 
 
-def post_bot_event(rasa_base: str, sender: str, text: str, timeout: int = 5):
-    """Post a bot event to the conversation tracker so the UI shows it immediately.
+def post_bot_event(rasa_base: str, sender: str, text: str, timeout: int = 5, external: bool = True):
+    """Post a bot event to the conversation tracker so the UI can surface it.
 
-    This creates an event of type 'bot' with the provided text.
+    Adds metadata.source = 'external' so the UI can differentiate externally injected
+    notifications from normal REST webhook replies and avoid duplication.
     """
     url = f"{rasa_base}/conversations/{sender}/tracker/events"
     payload = {"event": "bot", "text": text}
+    if external:
+        payload["metadata"] = {"source": "external"}
     try:
         resp = requests.post(url, json=payload, timeout=timeout)
         resp.raise_for_status()
@@ -93,7 +96,7 @@ def notify_and_request_mitigation(
     print(f"Injecting announcement into tracker as bot event for sender '{sender}'")
     try:
         rasa_base = rasa_base_from_webhook(rasa_url)
-        post_bot_event(rasa_base, sender, announcement, timeout=5)
+        post_bot_event(rasa_base, sender, announcement, timeout=5, external=True)
         ann_resp = {'injected_as': 'bot_event', 'text': announcement}
         print("Announcement injected as bot event:")
         print(json.dumps(ann_resp, indent=2, ensure_ascii=False))

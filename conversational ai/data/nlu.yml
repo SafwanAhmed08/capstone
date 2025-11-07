@@ -68,6 +68,14 @@ nlu:
     - what is M1047?
     - how do I mitigate credential access?
     - explain M1016 vulnerability scanning
+    - mitigation for ddos_tcp
+    - ddos_tcp mitigation steps
+    - how to mitigate ddos_http
+    - mitigation for ddos_http flood
+    - ddos_icmp mitigation
+    - how do I mitigate port scanning
+    - mitigation for man in the middle
+    - mitigation for mitm attack
 
 - intent: list_mitigations
   examples: |

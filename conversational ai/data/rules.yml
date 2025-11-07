@@ -25,4 +25,3 @@ rules:
   steps:
   - intent: nlu_fallback
   - action: action_llm_fallback
-  - action: utter_default
