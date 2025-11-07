@@ -12,8 +12,8 @@ const TRACKER_POLL_INTERVAL = 2000;
 // Feature flags for troubleshooting
 const ENABLE_TRACKER_POLL = true; // enabled to surface external notifications injected into the tracker
 const DEBUG_DUPES = true; // logs sources of messages
-// When the UI itself sends a message via REST, suppress showing tracker events for a short window
-let suppressTrackerUntil = 0;
+// When the UI itself sends a message via REST, suppress showing tracker events for the same turn
+let suppressTrackerUntil = 0; // timestamp (ms) until which tracker events are hidden
 let lastTrackerEventCount = 0;
 
 // Dedupe recent bot messages so the same text isn't rendered twice when
@@ -99,8 +99,8 @@ async function handleUserInput() {
         // Prevent double send while awaiting response
         sendButton.disabled = true;
         userInput.disabled = true;
-        // Set suppression window so tracker-poll doesn't mirror REST responses
-        suppressTrackerUntil = Date.now() + 3000; // 3s suppression window
+    // Set suppression window so tracker-poll doesn't mirror REST responses for this turn
+    suppressTrackerUntil = Date.now() + 10000; // 10s suppression window
         
         // Get responses from RASA
         const botResponses = await sendToRasa(message);
@@ -113,6 +113,9 @@ async function handleUserInput() {
             // Add a small delay between messages for better readability
             await new Promise(resolve => setTimeout(resolve, 500));
         }
+
+        // Extend suppression slightly after rendering REST responses
+        suppressTrackerUntil = Date.now() + 10000;
 
         // Re-enable input
         sendButton.disabled = false;
@@ -140,6 +143,13 @@ async function pollTracker() {
 
         // On first run, initialize the lastTrackerEventCount so we don't replay history
         if (lastTrackerEventCount === 0) {
+            lastTrackerEventCount = events.length;
+            return;
+        }
+
+        // If we're within the suppression window of a recent UI-originated REST send,
+        // advance the event cursor but do not render tracker bot events for this turn
+        if (Date.now() <= suppressTrackerUntil) {
             lastTrackerEventCount = events.length;
             return;
         }
