@@ -22,10 +22,6 @@ stories:
   - intent: mitigation
   - action: utter_mitigation
 
-- story: check device status
-  steps:
-  - intent: device_status
-  - action: utter_device_status
 
 - story: give best practices
   steps:

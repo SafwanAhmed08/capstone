@@ -25,3 +25,8 @@ rules:
   steps:
   - intent: nlu_fallback
   - action: action_llm_fallback
+
+- rule: Reply with current attack status
+  steps:
+    - intent: device_status
+    - action: action_query_attack_status

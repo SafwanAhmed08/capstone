@@ -50,4 +50,5 @@ actions:
   - action_list_mitigations
   - action_run_anomaly_detection
   - action_analyze_pcap
+  - action_query_attack_status
   - action_llm_fallback

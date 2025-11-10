@@ -43,6 +43,10 @@ nlu:
     - is everything running normally?
     - device health report
     - any suspicious activity?
+    - is my system under an attack
+    - is there an attack right now?
+    - am I under attack
+    - is my network being attacked
 
 - intent: best_practices
   examples: |

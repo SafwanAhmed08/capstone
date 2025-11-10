@@ -13,6 +13,7 @@ import re
 import google.generativeai as genai
 from dotenv import load_dotenv
 import logging
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -39,6 +40,10 @@ except Exception as e:
     print(f"❌ Error loading CSV: {e}")
     print(f"Tried path: {csv_path}")
     df = pd.DataFrame()
+
+    # In-memory map to remember the last reported external alert per conversation
+    # Key: sender_id (or '_global' if None) -> (signature, timestamp)
+    RECENTLY_REPORTED: Dict[Text, Any] = {}
 
 class ActionMitigationLookup(Action):
     def name(self) -> Text:
@@ -463,4 +468,90 @@ class ActionLLMFallback(Action):
             dispatcher.utter_message(text="I apologize, but I encountered an error processing your request. Please try rephrasing your question.")
             logger.debug(f"Full error details: {repr(e)}")
         
+        return []
+
+
+class ActionQueryAttackStatus(Action):
+    """Answer whether there's a current external attack.
+
+    This action scans the tracker's events for bot events injected by
+    `tools/notify_rasa.py` which set `metadata.source == 'external'` and
+    include 'THREAT DETECTED' (or similar) in the text. To avoid reporting
+    stale incidents, only consider events newer than ATTACK_TTL_SECONDS.
+    """
+    def name(self) -> Text:
+        return "action_query_attack_status"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+
+        # TTL: consider only events within the last N seconds. Default is small (10s)
+        # so injected/continuous subscribers do not trigger stale alerts.
+        ATTACK_TTL_SECONDS = int(os.getenv("ATTACK_TTL_SECONDS", "10"))
+        now = time.time()
+
+        # Examine tracker events in reverse order to find the latest external bot event
+        events = list(getattr(tracker, "events", []))
+        recent_attack = None
+        for ev in reversed(events):
+            if not isinstance(ev, dict):
+                continue
+            if ev.get("event") != "bot":
+                continue
+            metadata = ev.get("metadata") or {}
+            if metadata.get("source") != "external":
+                continue
+
+            # If event has a timestamp, respect TTL
+            ts = ev.get("timestamp")
+            try:
+                if ts is not None and (now - float(ts) > ATTACK_TTL_SECONDS):
+                    # stale — skip
+                    continue
+            except Exception:
+                # If timestamp is invalid, treat conservatively (allow)
+                pass
+
+            text = (ev.get("text") or "").upper()
+            if "THREAT DETECTED" in text or "ATTACK DETECTED" in text or "THREAT" in text:
+                recent_attack = ev
+                break
+
+        if recent_attack:
+            text = recent_attack.get("text", "")
+
+            # Prevent repeated alerts: compute a simple signature and skip
+            # reporting if we've already reported the same signature for this
+            # conversation within the TTL window.
+            signature = (text or "").strip()
+            sender_id = getattr(tracker, "sender_id", None) or "_global"
+            last = RECENTLY_REPORTED.get(sender_id)
+            if last:
+                last_sig, last_ts = last
+                if last_sig == signature and (now - last_ts) <= ATTACK_TTL_SECONDS:
+                    logger.debug(f"Skipping repeated alert for sender {sender_id}")
+                    dispatcher.utter_message(text=(
+                        "✅ No attacks detected right now.\n\n"
+                        "Your system appears to be operating normally"
+                    ))
+                    return []
+
+            # Try to extract threat name
+            m = re.search(r"THREAT DETECTED:\s*(.+)$", text, re.IGNORECASE)
+            if m:
+                threat_name = m.group(1).strip()
+                dispatcher.utter_message(text=f"🚨 Attack detected: {threat_name}")
+            else:
+                dispatcher.utter_message(text=f"🚨 An external threat was reported: {text}")
+
+            # Record that we've just reported this signature for this sender so
+            # repeated posts won't re-alert until TTL expires.
+            RECENTLY_REPORTED[sender_id] = (signature, now)
+        else:
+            dispatcher.utter_message(text=(
+                "✅ No attacks detected right now.\n\n"
+                "Your system appears to be operating normally"
+            ))
+
         return []
