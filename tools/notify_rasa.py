@@ -20,6 +20,10 @@ import argparse
 from typing import Optional
 
 import requests
+try:
+    import paho.mqtt.client as mqtt
+except Exception:  # keep script usable even if paho-mqtt isn't installed
+    mqtt = None
 
 DEFAULT_RASA = "http://localhost:5006/webhooks/rest/webhook"
 
@@ -127,24 +131,112 @@ def main():
     parser = argparse.ArgumentParser(description="Notify a running Rasa server about a detected threat.")
     parser.add_argument("--sender", default="user", help="sender id to use for the conversation (default: 'user')")
     parser.add_argument("--rasa-url", default=DEFAULT_RASA, help="Rasa REST webhook URL")
-    parser.add_argument("--threat", required=True, help="Threat name (e.g., DDoS_TCP)")
+    # threat is required for one-shot CLI mode, but not when --mqtt-listen is used
+    parser.add_argument("--threat", required=False, help="Threat name (e.g., DDoS_TCP)")
     parser.add_argument("--confidence", type=float, default=None, help="Optional confidence as a float (0..1)")
     parser.add_argument("--pcap", default=None, help="Optional pcap file name/path")
     parser.add_argument("--announce-only", action="store_true", help="Only send the announcement (no mitigation trigger)")
+    # MQTT listener options
+    parser.add_argument("--mqtt-listen", action="store_true", help="Start an MQTT listener and forward incoming messages to Rasa")
+    parser.add_argument("--mqtt-broker", default="broker.hivemq.com", help="MQTT broker hostname")
+    parser.add_argument("--mqtt-port", type=int, default=8000, help="MQTT broker port (default 8000 for websockets)")
+    parser.add_argument("--mqtt-topic", default="shrijit/test/topic", help="MQTT topic to subscribe to")
+    parser.add_argument("--mqtt-transport", default="websockets", choices=["websockets", "tcp"], help="MQTT transport to use (websockets or tcp)")
 
     args = parser.parse_args()
 
-    try:
-        notify_and_request_mitigation(
-            threat_name=args.threat,
-            sender=args.sender,
-            rasa_url=args.rasa_url,
-            confidence=args.confidence,
-            pcap=args.pcap,
-            announce_only=args.announce_only,
-        )
-    except Exception as e:
-        print(f"Failed to notify Rasa: {e}")
+    # If not running as an MQTT listener, --threat must be provided
+    if not args.mqtt_listen and not args.threat:
+        parser.error("the following arguments are required: --threat (unless --mqtt-listen is used)")
+
+    if args.mqtt_listen:
+        # start MQTT listener (blocking)
+        if mqtt is None:
+            print("paho-mqtt is not installed. Install with: pip install paho-mqtt")
+            return
+
+        def on_connect(client, userdata, flags, rc):
+            if rc == 0:
+                print(f"🔌 MQTT connected to {args.mqtt_broker}:{args.mqtt_port}")
+                client.subscribe(args.mqtt_topic, qos=1)
+                print(f"� Subscribed to topic '{args.mqtt_topic}'")
+            else:
+                print(f"⚠️ MQTT failed to connect, rc={rc}")
+
+        def on_message(client, userdata, msg):
+            try:
+                payload = msg.payload.decode(errors='ignore')
+            except Exception:
+                payload = msg.payload
+            print(f"📥 MQTT message on {msg.topic}: {payload}")
+
+            # Expecting JSON payload like {"Attack":"DDoS_TCP","confidence":"0.86"}
+            try:
+                data = json.loads(payload)
+            except Exception:
+                print("⚠️ MQTT payload is not valid JSON; ignoring")
+                return
+
+            # Accept several casing variants
+            attack = data.get("Attack") or data.get("attack") or data.get("threat")
+            confidence = data.get("confidence") or data.get("Confidence")
+            try:
+                if confidence is not None:
+                    confidence = float(confidence)
+            except Exception:
+                pass
+
+            if not attack:
+                print("⚠️ MQTT message missing 'Attack' field; ignoring")
+                return
+
+            try:
+                mit_resp = notify_and_request_mitigation(
+                    threat_name=attack,
+                    sender=args.sender,
+                    rasa_url=args.rasa_url,
+                    confidence=confidence,
+                    pcap=args.pcap,
+                    announce_only=args.announce_only,
+                )
+                # print a compact summary of the mitigation response when possible
+                if mit_resp is not None:
+                    try:
+                        # if it's requests.Response-like (we often return parsed json/text)
+                        if isinstance(mit_resp, dict) or isinstance(mit_resp, list):
+                            print("Mitigation response (parsed JSON):")
+                            print(json.dumps(mit_resp, indent=2, ensure_ascii=False))
+                        else:
+                            print("Mitigation response:")
+                            print(mit_resp)
+                    except Exception:
+                        print(mit_resp)
+            except Exception as e:
+                print(f"Error while forwarding to Rasa: {e}")
+
+        print(f"👂 Starting MQTT listener -> forwarding to Rasa at {args.rasa_url}")
+        client = mqtt.Client(transport=args.mqtt_transport)
+        client.on_connect = on_connect
+        client.on_message = on_message
+        try:
+            client.connect(args.mqtt_broker, args.mqtt_port, 60)
+        except Exception as e:
+            print(f"Failed to connect to MQTT broker: {e}")
+            return
+        client.loop_forever()
+
+    else:
+        try:
+            notify_and_request_mitigation(
+                threat_name=args.threat,
+                sender=args.sender,
+                rasa_url=args.rasa_url,
+                confidence=args.confidence,
+                pcap=args.pcap,
+                announce_only=args.announce_only,
+            )
+        except Exception as e:
+            print(f"Failed to notify Rasa: {e}")
 
 
 if __name__ == "__main__":
