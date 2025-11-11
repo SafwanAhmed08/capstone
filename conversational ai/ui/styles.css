@@ -6,12 +6,13 @@ body {
 }
 
 .chat-container {
-    max-width: 800px;
-    margin: 20px auto;
+    max-width: 900px;
+    margin: 12px auto;
     background: white;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    height: 80vh;
+    /* increased height so chat area is longer on screen */
+    height: 90vh;
     display: flex;
     flex-direction: column;
 }
@@ -46,10 +47,11 @@ body {
 
 .message-content {
     max-width: 70%;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-radius: 15px;
-    font-size: 14px;
-    line-height: 1.4;
+    /* slightly smaller font for longer conversation density */
+    font-size: 13px;
+    line-height: 1.35;
 }
 
 .user-message .message-content {
@@ -73,11 +75,11 @@ body {
 
 #user-input {
     flex: 1;
-    padding: 12px;
+    padding: 10px 12px;
     border: 1px solid #e6e6e6;
     border-radius: 20px;
     outline: none;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 #send-button {
