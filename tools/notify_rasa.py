@@ -170,24 +170,58 @@ def main():
                 payload = msg.payload
             print(f"📥 MQTT message on {msg.topic}: {payload}")
 
-            # Expecting JSON payload like {"Attack":"DDoS_TCP","confidence":"0.86"}
+            # Parse JSON payload and support both old simple format and the
+            # new ensemble-style payload described by the user.
             try:
                 data = json.loads(payload)
             except Exception:
                 print("⚠️ MQTT payload is not valid JSON; ignoring")
                 return
 
-            # Accept several casing variants
-            attack = data.get("Attack") or data.get("attack") or data.get("threat")
-            confidence = data.get("confidence") or data.get("Confidence")
-            try:
-                if confidence is not None:
-                    confidence = float(confidence)
-            except Exception:
-                pass
+            attack = None
+            confidence = None
+
+            # New ensemble-style message: prefer alerts[0].ensemble_labels[0]
+            alerts = data.get("alerts") or data.get("Alerts")
+            if isinstance(alerts, list) and len(alerts) > 0:
+                first = alerts[0]
+                ensemble_labels = first.get("ensemble_labels")
+                if isinstance(ensemble_labels, list) and ensemble_labels:
+                    attack = ensemble_labels[0]
+
+                # Get confidence from ensemble_probs if possible
+                probs = first.get("ensemble_probs")
+                if attack and isinstance(probs, dict):
+                    # try exact label, then lowercased key
+                    confidence = probs.get(attack)
+                    if confidence is None:
+                        confidence = probs.get(attack.lower())
+                    try:
+                        if confidence is not None:
+                            confidence = float(confidence)
+                    except Exception:
+                        confidence = None
+
+                # fallback to binary_prob
+                if confidence is None and first.get("binary_prob") is not None:
+                    try:
+                        confidence = float(first.get("binary_prob"))
+                    except Exception:
+                        confidence = None
+
+            # Backwards-compatible keys if not using the new format
+            if not attack:
+                attack = data.get("Attack") or data.get("attack") or data.get("threat")
+            if confidence is None:
+                confidence = data.get("confidence") or data.get("Confidence")
+                try:
+                    if confidence is not None:
+                        confidence = float(confidence)
+                except Exception:
+                    pass
 
             if not attack:
-                print("⚠️ MQTT message missing 'Attack' field; ignoring")
+                print("⚠️ MQTT message missing attack information; ignoring")
                 return
 
             try:
@@ -202,7 +236,6 @@ def main():
                 # print a compact summary of the mitigation response when possible
                 if mit_resp is not None:
                     try:
-                        # if it's requests.Response-like (we often return parsed json/text)
                         if isinstance(mit_resp, dict) or isinstance(mit_resp, list):
                             print("Mitigation response (parsed JSON):")
                             print(json.dumps(mit_resp, indent=2, ensure_ascii=False))
