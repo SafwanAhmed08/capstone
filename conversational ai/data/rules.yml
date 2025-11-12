@@ -30,3 +30,8 @@ rules:
   steps:
     - intent: device_status
     - action: action_query_attack_status
+
+- rule: Show recent network logs
+  steps:
+    - intent: show_network_logs
+    - action: action_show_network_logs

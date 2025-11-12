@@ -6,6 +6,7 @@
 
 import pandas as pd
 import os
+import json
 from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
@@ -554,4 +555,59 @@ class ActionQueryAttackStatus(Action):
                 "Your system appears to be operating normally"
             ))
 
+        return []
+
+
+class ActionShowNetworkLogs(Action):
+    """Return recent network alert logs persisted by the subscriber."""
+    def name(self) -> Text:
+        return "action_show_network_logs"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+
+        # Log file is stored at project_root/logs/network_alerts.jsonl
+        logs_path = os.path.join(project_root, 'logs', 'network_alerts.jsonl')
+
+        if not os.path.exists(logs_path):
+            dispatcher.utter_message(text="📭 No network logs found yet.")
+            return []
+
+        try:
+            with open(logs_path, 'r', encoding='utf-8') as fh:
+                lines = fh.read().strip().splitlines()
+        except Exception as e:
+            logger.error(f"Error reading network logs: {e}")
+            dispatcher.utter_message(text="❌ I couldn't read the network logs. Check server logs.")
+            return []
+
+        if not lines:
+            dispatcher.utter_message(text="📭 Network log is empty.")
+            return []
+
+        # How many entries to show; allow user to ask e.g. 'show me last 10' in future
+        N = 5
+        recent = lines[-N:]
+
+        response = f"📋 Showing the {len(recent)} most recent network alerts:\n\n"
+        for ln in reversed(recent):
+            try:
+                entry = json.loads(ln)
+            except Exception:
+                # fallback: show raw line
+                response += f"• {ln}\n"
+                continue
+
+            ts = entry.get('received_at', 'unknown time')
+            atk = entry.get('parsed_attack') or entry.get('raw', {}).get('threat') or entry.get('raw', {}).get('Attack') or 'unknown'
+            conf = entry.get('confidence')
+            pcap = entry.get('pcap') or entry.get('raw', {}).get('pcap') or ''
+
+            conf_str = f" ({conf:.1%})" if isinstance(conf, (int, float)) else (f" ({conf})" if conf is not None else "")
+            pcap_str = f" | pcap={pcap}" if pcap else ""
+
+            response += f"• [{ts}] {atk}{conf_str}{pcap_str}\n"
+
+        dispatcher.utter_message(text=response)
         return []

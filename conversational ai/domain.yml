@@ -11,6 +11,7 @@ intents:
   - ask_mitigation
   - list_mitigations
   - mitigation_id
+  - show_network_logs
 
 slots:
   fallback_count:
@@ -52,3 +53,4 @@ actions:
   - action_analyze_pcap
   - action_query_attack_status
   - action_llm_fallback
+  - action_show_network_logs

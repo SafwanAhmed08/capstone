@@ -102,3 +102,15 @@ nlu:
     - T1012
     - T1162
     - T1166
+
+- intent: show_network_logs
+  examples: |
+    - show me the recent log
+    - network logs
+    - recent threat activity
+    - show recent network logs
+    - show me recent alerts
+    - show me the last 5 network alerts
+    - show last 10 logs
+    - show recent threat activity
+    - display recent network activity

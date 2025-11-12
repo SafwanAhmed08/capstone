@@ -1,0 +1,2 @@
+{"received_at": "2025-11-12T04:05:56.238659Z", "parsed_attack": "ddos_test", "confidence": 0.88, "pcap": "tcp.pcap", "raw": {"test": "ok", "Attack": "ddos_test"}}
+{"received_at": "2025-11-12T04:15:38.308839Z", "parsed_attack": "ddos_tcp", "confidence": 0.952, "pcap": "tcp.pcap", "raw": {"source": "IDS-Ensemble", "timestamp": "2025-11-11T06:49:34.748787Z", "pcap": "tcp.pcap", "alerts": [{"ensemble_labels": ["ddos_tcp"], "ensemble_probs": {"ddos_tcp": 0.952}}]}}
