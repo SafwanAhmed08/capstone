@@ -24,6 +24,35 @@ try:
     import paho.mqtt.client as mqtt
 except Exception:  # keep script usable even if paho-mqtt isn't installed
     mqtt = None
+from datetime import datetime
+import os
+
+# Where to store incoming alerts for later retrieval by Rasa actions
+LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'conversational ai', 'logs')
+LOG_FILE = os.path.join(LOG_DIR, 'network_alerts.jsonl')
+
+
+def ensure_log_dir():
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+    except Exception:
+        pass
+
+
+def append_alert_to_log(raw_data: dict, parsed_attack: str = None, confidence: float = None, pcap: str = None):
+    ensure_log_dir()
+    entry = {
+        'received_at': datetime.utcnow().isoformat() + 'Z',
+        'parsed_attack': parsed_attack,
+        'confidence': confidence,
+        'pcap': pcap,
+        'raw': raw_data,
+    }
+    try:
+        with open(LOG_FILE, 'a', encoding='utf-8') as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    except Exception as e:
+        print(f"Failed to write alert to log: {e}")
 
 DEFAULT_RASA = "http://localhost:5006/webhooks/rest/webhook"
 
@@ -225,6 +254,12 @@ def main():
                 return
 
             try:
+                # Persist incoming alert (raw + parsed) for later "recent logs" queries
+                try:
+                    append_alert_to_log(raw_data=data, parsed_attack=attack, confidence=confidence, pcap=data.get('pcap') or args.pcap)
+                except Exception as e:
+                    print(f"Warning: failed to append alert to log: {e}")
+
                 mit_resp = notify_and_request_mitigation(
                     threat_name=attack,
                     sender=args.sender,
@@ -260,6 +295,11 @@ def main():
 
     else:
         try:
+            # Log CLI-invoked alert as well
+            try:
+                append_alert_to_log(raw_data={"threat": args.threat, "pcap": args.pcap}, parsed_attack=args.threat, confidence=args.confidence, pcap=args.pcap)
+            except Exception:
+                pass
             notify_and_request_mitigation(
                 threat_name=args.threat,
                 sender=args.sender,
