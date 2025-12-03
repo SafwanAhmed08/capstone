@@ -361,7 +361,7 @@ class ActionAnalyzePcap(Action):
             model_path = os.path.join(os.path.dirname(current_dir), '..', 'model')
             sys.path.insert(0, model_path)
             
-            from inferencegpu import analyze_pcap_for_rasa
+            from inference_gpu import analyze_pcap_for_rasa
             
             # Run analysis
             result = analyze_pcap_for_rasa(pcap_file)

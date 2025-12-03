@@ -5,7 +5,7 @@ This avoids any Rasa SDK imports in the inference environment so you won't have
 package/version conflicts. It posts an announcement and then triggers the
 mitigation lookup by sending a follow-up message ("mitigation for <THREAT>").
 
-Defaults match your UI (`conversational ai/ui/app.js`) which posts to
+Defaults match your UI (`conversational_ai/ui/app.js`) which posts to
 http://localhost:5006/webhooks/rest/webhook with sender 'user'.
 
 Usage:
@@ -28,7 +28,7 @@ from datetime import datetime
 import os
 
 # Where to store incoming alerts for later retrieval by Rasa actions
-LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'conversational ai', 'logs')
+LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'conversational_ai', 'logs')
 LOG_FILE = os.path.join(LOG_DIR, 'network_alerts.jsonl')
 
 
