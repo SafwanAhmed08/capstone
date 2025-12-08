@@ -1,0 +1,23 @@
+recipe: default.v1
+language: en
+
+pipeline:
+- name: WhitespaceTokenizer
+- name: CountVectorsFeaturizer
+- name: DIETClassifier
+  epochs: 100
+- name: EntitySynonymMapper
+- name: ResponseSelector
+  epochs: 100
+- name: FallbackClassifier
+  threshold: 0.7
+
+policies:
+- name: RulePolicy
+  core_fallback_threshold: 0.7
+  core_fallback_action_name: "action_llm_fallback"
+- name: MemoizationPolicy
+- name: TEDPolicy
+  max_history: 5
+  epochs: 100
+assistant_id: 20251014-203655-faint-plate

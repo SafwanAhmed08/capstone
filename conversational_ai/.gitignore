@@ -1,0 +1,13 @@
+.rasa/
+.vscode/
+__pycache__/
+*.pyc
+.rasaenv/
+rasaenv/
+.env
+.env.*
+models/
+*.tar.gz
+.DS_Store
+node_modules/
+.capstone-cache/

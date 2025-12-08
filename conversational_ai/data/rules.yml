@@ -1,0 +1,37 @@
+version: "3.1"
+
+rules:
+- rule: Lookup MITRE mitigation
+  steps:
+    - intent: ask_mitigation
+    - action: action_lookup_mitigation
+
+- rule: Lookup mitigation by ID
+  steps:
+    - intent: mitigation_id
+    - action: action_lookup_mitigation
+
+- rule: List available mitigations
+  steps:
+    - intent: list_mitigations
+    - action: action_list_mitigations
+
+- rule: Run anomaly detection when asked
+  steps:
+    - intent: threat_detection
+    - action: action_run_anomaly_detection
+
+- rule: Fallback with LLM
+  steps:
+  - intent: nlu_fallback
+  - action: action_llm_fallback
+
+- rule: Reply with current attack status
+  steps:
+    - intent: device_status
+    - action: action_query_attack_status
+
+- rule: Show recent network logs
+  steps:
+    - intent: show_network_logs
+    - action: action_show_network_logs
