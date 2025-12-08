@@ -4,6 +4,7 @@
 # See this guide on how to implement these action:
 # https://rasa.com/docs/rasa/custom-actions
 
+
 import pandas as pd
 import os
 import json
@@ -11,27 +12,32 @@ from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 import re
-import google.generativeai as genai
 from dotenv import load_dotenv
 import logging
 import time
+
+
+try:
+    import google.generativeai as genai
+except Exception:
+    genai = None
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv('api.env')
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
-# Verify API key
-if not GOOGLE_API_KEY:
-    logger.error("❌ No API key found in api.env file")
-    raise ValueError("Missing GOOGLE_API_KEY in environment variables")
-
-# Load CSV with absolui te path to ensure it's found
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
+env_path = os.path.join(project_root, 'api.env')
+load_dotenv(env_path)
+
+
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+if not GOOGLE_API_KEY:
+    logger.warning("⚠️ GOOGLE_API_KEY not found in %s; LLM fallback will be disabled", env_path)
+
+
 csv_path = os.path.join(project_root, "mitre_mitigations.csv")
 
 try:
@@ -42,9 +48,8 @@ except Exception as e:
     print(f"Tried path: {csv_path}")
     df = pd.DataFrame()
 
-    # In-memory map to remember the last reported external alert per conversation
-    # Key: sender_id (or '_global' if None) -> (signature, timestamp)
-    RECENTLY_REPORTED: Dict[Text, Any] = {}
+
+RECENTLY_REPORTED: Dict[Text, Any] = {}
 
 class ActionMitigationLookup(Action):
     def name(self) -> Text:
@@ -62,9 +67,7 @@ class ActionMitigationLookup(Action):
         print(f"🔍 Searching for query: '{query}'")
         print(f"🔍 DataFrame shape: {df.shape}")
 
-        # If the user asked a definitional / general knowledge question (e.g. "what is TCP"),
-        # delegate to the LLM fallback so the LLM can provide a concise explanation instead
-        # of trying to match MITRE mitigations.
+       
         if re.search(r"\b(what is|what's|define|explain|tell me about|who is|what are)\b", query, re.IGNORECASE):
             print("ℹ️ Detected definitional/general question — delegating to LLM fallback")
             try:
@@ -75,10 +78,10 @@ class ActionMitigationLookup(Action):
                 dispatcher.utter_message(text="I couldn't find a mitigation, and I had trouble contacting the LLM. Please try rephrasing your question.")
             return []
 
-        # Hardcoded overrides for specific topics/keywords
+       
         normalized_query = query.strip().lower()
         overrides = {
-            # DDoS TCP variants
+          
             "ddos_tcp": (
                 "✅ Mitigations for DDoS over TCP (curated):\n\n"
                 "• Deploy upstream scrubbing/anycast DDoS protection; advertise through multiple POPs.\n"
@@ -233,13 +236,13 @@ class ActionMitigationLookup(Action):
                 dispatcher.utter_message(text=curated_response)
                 return []
         
-        # Search by ID (e.g., T1174)
+       
         if query.strip().upper().startswith('T') and any(char.isdigit() for char in query):
             print(f"🔍 Searching by ID pattern: {query.upper()}")
             result = df[df['ID'].str.contains(query.upper(), na=False)]
             print(f"🔍 ID search results: {len(result)} matches")
         else:
-            # Search by name or description
+           
             print(f"🔍 Searching by name/description: {query}")
             name_match = df[df['Name'].str.lower().str.contains(query, na=False)]
             desc_match = df[df['Description'].str.lower().str.contains(query, na=False)]
@@ -258,7 +261,7 @@ class ActionMitigationLookup(Action):
                 if len(result) > 3:
                     response += f"\n... and {len(result) - 3} more. Please be more specific."
         else:
-            # Show some sample data to help debug
+            
             sample_ids = df['ID'].head(5).tolist()
             sample_names = df['Name'].head(5).tolist()
             response = f"❌ I couldn't find a relevant mitigation in MITRE ATT&CK for '{query}'.\n\n"
@@ -437,6 +440,21 @@ class ActionLLMFallback(Action):
         logger.debug(f"Processing message: {user_message}")
 
         try:
+            # Ensure the generative AI client and API key are available.
+            if genai is None:
+                logger.error("LLM package 'google.generativeai' not available")
+                dispatcher.utter_message(text=(
+                    "I can't process that with the LLM because the required package is not installed on the server."
+                    " Please contact the system administrator to enable LLM support."))
+                return []
+
+            if not GOOGLE_API_KEY:
+                logger.error("GOOGLE_API_KEY not configured; LLM disabled")
+                dispatcher.utter_message(text=(
+                    "I can't contact the LLM because the API key is not configured."
+                    " Please add the key to the server's `api.env` file."))
+                return []
+
             # Configure Gemini
             genai.configure(api_key=GOOGLE_API_KEY)
             

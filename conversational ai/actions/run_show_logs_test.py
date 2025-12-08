@@ -3,27 +3,33 @@ from pathlib import Path
 
 # Ensure parent (conversational ai) is on sys.path so imports behave
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import importlib
-actions_mod = importlib.import_module('actions.actions')
 
-class DummyDispatcher:
-    def __init__(self):
-        self.messages = []
-    def utter_message(self, text=None, json_message=None, **kwargs):
-        self.messages.append({'text': text})
+def run_test():
+    import importlib
+    actions_mod = importlib.import_module('actions.actions')
 
-class DummyTracker:
-    def __init__(self):
-        self.sender_id = 'test'
-        self.latest_message = {'text': ''}
-        self.events = []
+    class DummyDispatcher:
+        def __init__(self):
+            self.messages = []
+        def utter_message(self, text=None, json_message=None, **kwargs):
+            self.messages.append({'text': text})
 
-dispatcher = DummyDispatcher()
-tracker = DummyTracker()
+    class DummyTracker:
+        def __init__(self):
+            self.sender_id = 'test'
+            self.latest_message = {'text': ''}
+            self.events = []
 
-act = actions_mod.ActionShowNetworkLogs()
-act.run(dispatcher, tracker, {})
+    dispatcher = DummyDispatcher()
+    tracker = DummyTracker()
 
-print('Dispatched messages:')
-for m in dispatcher.messages:
-    print(m)
+    act = actions_mod.ActionShowNetworkLogs()
+    act.run(dispatcher, tracker, {})
+
+    print('Dispatched messages:')
+    for m in dispatcher.messages:
+        print(m)
+
+
+if __name__ == '__main__':
+    run_test()
